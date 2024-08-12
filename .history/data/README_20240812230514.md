@@ -1,9 +1,0 @@
-We opensource simulation workloads here.
-
-Please access them in google drive:
-
-https://drive.google.com/file/d/1deNWs4P4i3G64H6gx1DaYQHC2hO1Wrpp/view?usp=drive_link
-
-https://drive.google.com/file/d/1lL_sw_OzH5yfCnsBQC3sCDcSm9tzB-1r/view?usp=drive_link
-
-The traces are CSV files, with the format like (fid, byte, time_ns, 0)...
