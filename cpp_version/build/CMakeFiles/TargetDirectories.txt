@@ -1,3 +1,0 @@
-/home/hzheng/2024/uMonOpen/cpp_version/build/CMakeFiles/rebuild_cache.dir
-/home/hzheng/2024/uMonOpen/cpp_version/build/CMakeFiles/edit_cache.dir
-/home/hzheng/2024/uMonOpen/cpp_version/build/CMakeFiles/niffler.dir

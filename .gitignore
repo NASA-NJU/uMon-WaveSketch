@@ -1,6 +1,6 @@
 data/*.csv
 *.csv
-build/*
+cpp_version/build/*
 .history/*
 
 .vscode
