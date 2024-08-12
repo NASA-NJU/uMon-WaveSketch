@@ -1,0 +1,7 @@
+{
+    "cmake.sourceDirectory": "/home/hzheng/2024/uMonOpen/cpp_version",
+    "files.associations": {
+        "array": "cpp",
+        "chrono": "cpp"
+    }
+}

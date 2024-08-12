@@ -150,11 +150,88 @@ class uSketch:
         self.global_min_time = min(self.global_min_time, time_ns)
             
     def reconstruct(self):
+        for row in self.heavy_part:
+            for hf in row:
+                hf.counter.reconstruct()
         for row in self.light_part:
             row.reconstruct()
             
+        for row in self.heavy_part:
+            for hf in row:
+                hash_row_lt = hash(hf.key) % self.light_d
+                for off, c in enumerate(hf.counter.result):
+                    temp_wid = hf.counter.init_wid + off
+                    if c > 0 and temp_wid < self.global_min_time // self.time_window + REPORT_WINDOW:
+                        light_off = temp_wid- self.light_part[hash_row_lt].init_wid
+                        # print(f"heavy {hf.key} wid {temp_wid} {c}, in light widoff {light_off} {self.light_part[hash_row_lt].result[light_off] } .. ")
+                        self.light_part[hash_row_lt].result[light_off] -= c
+                        if self.light_part[hash_row_lt].result[light_off]  < 0:
+                            self.light_part[hash_row_lt].result[light_off] = 0
+                    pass
+                pass
+            pass
+        pass
+    
+    def is_heavy_wid(self, f, wid):
+        """_summary_
+
+        Args:
+            f (_type_): _description_
+            wid (_type_): _description_
+        """
+        hash_row_hv = hash(f) % self.heavy_d
+        is_heavy = False
+        for hf in self.heavy_part[hash_row_hv]:
+            if hf.key == f:
+                re = hf.counter.query(wid)
+                is_heavy = True
+        if is_heavy is False or re < 0:
+            is_heavy = False
+        return is_heavy
+
+    def is_heavy_flow(self, f):
+        """_summary_
+
+        Args:
+            f (_type_): _description_
+            wid (_type_): _description_
+        """
+        hash_row_hv = hash(f) % self.heavy_d
+        is_heavy = False
+        for hf in self.heavy_part[hash_row_hv]:
+            if hf.key == f:
+                is_heavy = True
+        return is_heavy
+            
     def query(self, f, wid):
-        hash_row_lt = hash(f) % self.light_d
-        re = self.light_part[hash_row_lt].query(wid)     
+        hash_row_hv = hash(f) % self.heavy_d
+        re = 0
+        is_heavy = False
+        for hf in self.heavy_part[hash_row_hv]:
+            if hf.key == f:
+                re = hf.counter.query(wid)
+                is_heavy = True
+        if is_heavy is False or re == -1:
+            hash_row_lt = hash(f) % self.light_d
+            re = self.light_part[hash_row_lt].query(wid)     
+        if re < 0:
+            re = 0
         return re      
                 
+    def get_heavy_flows(self):
+        flows = {}
+        for row in self.heavy_part:
+            for hf in row:
+                if hf.key is not None:
+                    flows[hf.key] = hf.counter.result
+        return flows
+    
+    def get_light_flows(self):
+        flows = {}
+        for id in range(len(self.light_part)):
+            flows[id] = self.light_part[id].result
+        return flows
+    
+if __name__ == "__main__":
+    usketch = uSketch(200, 4, 0.5)
+    

@@ -154,7 +154,17 @@ class uSketch:
             row.reconstruct()
             
     def query(self, f, wid):
-        hash_row_lt = hash(f) % self.light_d
-        re = self.light_part[hash_row_lt].query(wid)     
+        hash_row_hv = hash(f) % self.heavy_d
+        re = 0
+        is_heavy = False
+        for hf in self.heavy_part[hash_row_hv]:
+            if hf.key == f:
+                re = hf.counter.query(wid)
+                is_heavy = True
+        if is_heavy is False or re == -1:
+            hash_row_lt = hash(f) % self.light_d
+            re = self.light_part[hash_row_lt].query(wid)     
+        if re < 0:
+            re = 0
         return re      
                 
