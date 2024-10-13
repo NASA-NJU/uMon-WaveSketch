@@ -13,7 +13,7 @@ namespace Fourier {
         // meet alignment request
         static_assert((WINDOW * 4) % 16 == 0);
         static_assert(MAX_LENGTH % WINDOW == 0);
-        constexpr static const int DEPTH = FULL_DEPTH * 2 / 3;
+        constexpr static const int DEPTH = (FULL_DEPTH * 4) / 6;
 
         static PFFFT_Setup* setup;
         TIME start_time;
@@ -80,7 +80,7 @@ namespace Fourier {
             cache.clear();
         }
 
-        bool count(TIME t, HASH) override {
+        bool count(TIME t, HASH, DATA c) override {
             assert(t >= start_time);
             if(start_time == 0) [[unlikely]] {
                 start_time = t;
@@ -91,7 +91,7 @@ namespace Fourier {
                 flush();
                 window_n = (t - start_time) / WINDOW;
             }
-            recent[(t - start_time) % WINDOW]++;
+            recent[(t - start_time) % WINDOW] += c;
             return false;
         }
 
@@ -115,8 +115,9 @@ namespace Fourier {
                 return cache;
 
             cache.resize(MAX_LENGTH);
-            auto* origin = static_cast<float *>(pffft_aligned_malloc(MAX_LENGTH * 4));
-            auto* buffer = static_cast<float *>(pffft_aligned_malloc(MAX_LENGTH * 4));
+            static auto* origin = static_cast<float *>(pffft_aligned_malloc(MAX_LENGTH * 4));
+            static auto* buffer = static_cast<float *>(pffft_aligned_malloc(MAX_LENGTH * 4));
+            static auto* worker = static_cast<float *>(pffft_aligned_malloc(WINDOW * 4));
 
             memset(origin, 0, MAX_LENGTH * 4);
 
@@ -125,7 +126,7 @@ namespace Fourier {
                 origin[pos] = history.heap_data[i].data;
             }
             for(int i = 0; i < MAX_LENGTH / WINDOW; i++) {
-                pffft_transform(setup, origin + i * WINDOW, buffer + i * WINDOW, nullptr, PFFFT_BACKWARD);
+                pffft_transform(setup, origin + i * WINDOW, buffer + i * WINDOW, worker, PFFFT_BACKWARD);
             }
 
             for(int i = 0; i < MAX_LENGTH; i++) {
@@ -133,10 +134,17 @@ namespace Fourier {
                 cache[i].second = (buffer[i] / WINDOW) >= 0 ? (buffer[i] / WINDOW) : 0;
             }
 
-            pffft_aligned_free(origin);
-            pffft_aligned_free(buffer);
+            //pffft_aligned_free(origin);
+            //pffft_aligned_free(buffer);
 
             return cache;
+        }
+
+        size_t serialize() const override {
+            size_t result = 0;
+            result += sizeof(start_time);
+            result += history.serialize();
+            return result;
         }
     };
 

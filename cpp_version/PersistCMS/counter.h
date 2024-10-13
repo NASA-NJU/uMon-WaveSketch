@@ -10,7 +10,11 @@ namespace PersistCMS {
 
     class counter : public abstract_counter {
     protected:
-        constexpr static const int DELTA = 40;
+#ifdef BY_BYTES
+        constexpr static const int DELTA = PCMS_DELTA * 1024;
+#else
+        constexpr static const int DELTA = PCMS_DELTA;
+#endif
 
         TIME start_time{};
         TIME last_time{};
@@ -30,7 +34,7 @@ namespace PersistCMS {
             cache.clear();
         }
 
-        bool count(TIME t, HASH) override {
+        bool count(TIME t, HASH, DATA c) override {
             assert(t >= last_time);
             if(start_time == 0) [[unlikely]] {
                 start_time = last_time = t;
@@ -44,7 +48,7 @@ namespace PersistCMS {
                     history.push_back(result);
             }
             last_time = t;
-            value++;
+            value += c;
             return false;
         }
 
@@ -80,23 +84,31 @@ namespace PersistCMS {
 
             // reconstruct from history
             TIME t = start_time;
+            TIME last_t = history.back().first;
             DATA last_d = 0;
+            cache.resize(last_t - t + 1);
+
             for(auto& p : history) {
                 for(; t <= p.first; t++) {
                     DATA d = evaluate(p.second, t);
-                    DATA diff = d - last_d >= 0 ? d - last_d : 0;
-                    cache.emplace_back(t, diff);
+                    cache[t - start_time].first = t;
+                    cache[t - start_time].second = d - last_d >= 0 ? d - last_d : 0;
                     last_d = d;
                 }
             }
 
-            assert(is_sorted(cache.begin(), cache.end()));
-            auto q = unique(cache.begin(), cache.end());
-            assert(q == cache.end());
-
             return cache;
         }
 
+        size_t serialize() const override {
+            size_t result = 0;
+            result += sizeof(start_time);
+            // counter for history
+            result += sizeof(uint16_t);
+            for(auto& l : history)
+                result += l.serialize();
+            return result;
+        }
     };
 
 } // PersistCMS

@@ -4,7 +4,6 @@
 
 #include "io_helper.h"
 #include "benchmark.h"
-#include "Wavelet/heavy.h"
 
 STREAM parse_csv_full(const string& fname) {
     constexpr static const int scale = 65536;
@@ -30,7 +29,7 @@ STREAM parse_csv_full(const string& fname) {
                          match[5].str(),
                          match[1].str());
 #ifdef SELECT_IN
-            if(t.hash() % BUCKET_HEAVY == breakpoint.hash() % BUCKET_HEAVY)
+            if(t.hash() % HALF_WIDTH == breakpoint.hash() % HALF_WIDTH)
 #endif
             result[t].emplace_back(stoul(match[6].str()), stoi(match[7].str()));
         }
@@ -43,13 +42,10 @@ STREAM parse_csv_full(const string& fname) {
     return result;
 }
 SORTED parse_csv_simple(const string& fname) {
-    constexpr static const int scale = 65536 * 8;
+    constexpr static const int scale = 65536 * 4;
     ifstream f(fname);
-    if(!f.is_open()) [[unlikely]]{
-        cerr <<" Failed to open file: " << fname << endl;
-        exit(-1);
-    }
-                
+    if(!f.is_open()) [[unlikely]]
+                exit(-1);
 
     SORTED result;
 
@@ -65,7 +61,11 @@ SORTED parse_csv_simple(const string& fname) {
 #ifdef SELECT_IN
         if(ft.hash() % HALF_WIDTH == breakpoint.hash() % HALF_WIDTH)
 #endif
-        result.emplace_back(ft, time / TIMESCALE + 1);
+#ifdef BY_BYTES
+        result.emplace_back(ft, time / TIMESCALE + 1, len);
+#else
+        result.emplace_back(ft, time / TIMESCALE + 1, 1);
+#endif
         i++;
         if(i % scale == 0)
             cout << '+' << flush;
@@ -79,19 +79,23 @@ SORTED parse_csv_simple(const string& fname) {
     f.close();
 
     sort(result.begin(), result.end(),
-         [](const auto& lhs, const auto& rhs) { return lhs.second < rhs.second; });
+         [](const auto& lhs, const auto& rhs) { return get<1>(lhs) < get<1>(rhs); });
 
+    TIME min_time = get<1>(result.front());
+    TIME max_time = get<1>(result.back());
+    TIME interval = max_time - min_time + 1;
+    cout << "Time interval: " << (double)interval * TIMESCALE * 1e-6 << "ms" << endl;
     return result;
 }
 
 STREAM sum_by_flow(const SORTED& data) {
     STREAM result;
     for(auto& p : data) {
-        auto& q = result[p.first];
-        if(q.empty() || q.back().first < p.second)
-            q.emplace_back(p.second, 1);
+        auto& q = result[get<0>(p)];
+        if(q.empty() || q.back().first < get<1>(p))
+            q.emplace_back(get<1>(p), get<2>(p));
         else
-            q.back().second++;
+            q.back().second += get<2>(p);
     }
     return result;
 }
@@ -123,4 +127,25 @@ void align(const STREAM& lhs, STREAM& rhs) {
         auto& r_queue = rhs[p.first];
         align(l_queue, r_queue);
     }
+}
+
+void flow_report(const STREAM& dict, ostream& fs, const methods m) {
+#ifdef FLOW_OUT
+    if(dict.contains(breakpoint)) [[likely]] {
+        for(auto &p : dict.at(breakpoint))
+            fs << m << "," << MEMORY << "," << p.first << "," << p.second << endl;
+    }
+#endif
+}
+
+// demonstrates why we must use double in polygon solver
+void demostration() {
+    uint32_t t1 = 7135911;
+
+    double cd = 37. * t1 - 26;
+    float cf = cd;
+    uint32_t t2 = 7135912;
+    float n2 = 37.f * t2 - cf;
+    int32_t n2i = n2;
+    cout << n2i << endl;
 }

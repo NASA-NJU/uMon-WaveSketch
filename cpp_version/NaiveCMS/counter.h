@@ -9,7 +9,7 @@ namespace NaiveCMS {
 
     class counter : public abstract_counter {
     protected:
-        constexpr static const int DEPTH = FULL_DEPTH * 2;
+        constexpr static const int DEPTH = FULL_DEPTH;
         TIME start_time{};
         array<DATA, DEPTH> history{};
     public:
@@ -18,14 +18,14 @@ namespace NaiveCMS {
             history.fill(0);
         }
 
-        bool count(TIME t, HASH h) override {
+        bool count(TIME t, HASH h, DATA c) override {
             assert(t >= start_time);
             if(start_time == 0) [[unlikely]] {
                 start_time = t;
             } else if(t - start_time >= MAX_LENGTH) [[unlikely]] {
                 return true;
             }
-            history[h % DEPTH]++;
+            history[h % DEPTH] += c;
             return false;
         }
 
@@ -45,6 +45,15 @@ namespace NaiveCMS {
 
         DATA query(HASH h) const {
             return history[h % DEPTH];
+        }
+
+        size_t serialize() const override {
+            size_t result = 0;
+            result += sizeof(start_time);
+            // history has fixed length
+            for(auto& d : history)
+                result += sizeof(d);
+            return result;
         }
     };
 

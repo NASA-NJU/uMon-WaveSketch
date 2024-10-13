@@ -15,7 +15,8 @@ enum class methods : uint8_t {
     NAIVE_CMS,
     FOURIER,
     PERSIST_CMS,
-    PERSIST_AMS
+    PERSIST_AMS,
+    REFERENCE
 };
 ostream& operator<<(ostream& os, const methods& t);
 
@@ -36,8 +37,8 @@ class benchmark {
     double gd_cos_dis;
 
 public:
-    constexpr static const uint32_t sketch_size = BUCKET;
-    constexpr static const char format[] = "class,dimension,length,l1,l2,are,energy,cos,g_l1,g_l2,g_energy,g_cos";
+    constexpr static const uint32_t sketch_size = MEMORY;
+    constexpr static const char format[] = "class,memory,id,length,l1,l2,are,energy,cos,g-l1,g-l2,g-energy,g-cos";
     benchmark(methods t, const five_tuple& f, const STREAM_QUEUE& lhs, const STREAM_QUEUE& rhs);
     friend ostream& operator<<(ostream& os, const benchmark& t);
 };

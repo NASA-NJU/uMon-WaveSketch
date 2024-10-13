@@ -10,7 +10,7 @@ namespace PersistCMS {
 
     class table : public basic_table<counter> {
     protected:
-        DATA select_val(vector<DATA>& vals) const override {
+        DATA select_val(array<DATA, HEIGHT>& vals) const override {
             return select_median(vals);
         }
     };

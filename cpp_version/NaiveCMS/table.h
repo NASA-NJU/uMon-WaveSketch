@@ -19,7 +19,7 @@ namespace NaiveCMS {
             last_time = 0;
         }
     public:
-        bool count(const five_tuple& f, TIME t) override {
+        bool count(const five_tuple& f, TIME t, DATA c) override {
             if(start_time == 0) [[unlikely]] {
                 start_time = t;
             }
@@ -30,11 +30,11 @@ namespace NaiveCMS {
                 HASH h = k.hash(seeds[row]);
                 HASH rem = h % WIDTH;
                 HASH quo = h / WIDTH;
-                bool result = counters[row][rem].count(t, quo);
+                bool result = counters[row][rem].count(t, quo, c);
                 if(result) {
                     history[row][rem].push_back(counters[row][rem]);
                     counters[row][rem].reset();
-                    counters[row][rem].count(t, quo);
+                    counters[row][rem].count(t, quo, c);
                 }
             }
 
@@ -42,9 +42,12 @@ namespace NaiveCMS {
         }
 
         STREAM_QUEUE rebuild(const five_tuple& f, TIME start, TIME last) const {
-            map<TIME, vector<DATA>> merger;
+            vector<array<DATA, HEIGHT>> merger(last - start + 1);
+            STREAM_QUEUE result(last - start + 1);
+
             for(TIME t = start; t <= last; t++) {
                 key k{f, t};
+                auto& slot = merger[t - start];
                 for(int row = 0; row < HEIGHT; row++) {
                     HASH h = k.hash(seeds[row]);
                     HASH rem = h % WIDTH;
@@ -52,13 +55,15 @@ namespace NaiveCMS {
                     auto& hc = history[row][rem];
                     auto c = first_history(hc, t);
                     if(c != hc.end() && t >= c->start())
-                        merger[t].emplace_back(c->query(quo));
+                        slot[row] = c->query(quo);
+                    else
+                        slot[row] = 0;
                 }
-            }
 
-            STREAM_QUEUE result;
-            for(auto& p : merger)
-                result.emplace_back(p.first, select_val(p.second));
+                DATA min = select_val(slot);
+                assert(min >= 0);
+                result[t - start] = make_pair(t, min);
+            }
 
             return result;
         }

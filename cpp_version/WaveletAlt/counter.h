@@ -14,6 +14,7 @@ namespace WaveletAlt {
     template<unsigned QUEUE_N = 1>
     class counter : public abstract_counter {
     protected:
+        constexpr static const int DEPTH = ROUND(FULL_DEPTH * 4 + 4 - 42, 4) / QUEUE_N;
         // # of data read
         uint16_t read_count{};
         DATA value{};
@@ -21,7 +22,7 @@ namespace WaveletAlt {
         array<DATA, LEVEL> last_coef{};
         array<DATA, RESERVED> top_level{};
 
-        heap<record, HIST_SIZE / QUEUE_N> detail[QUEUE_N]{};
+        heap<record, DEPTH> detail[QUEUE_N]{};
 
         interval time{};
 
@@ -59,14 +60,14 @@ namespace WaveletAlt {
             cache.clear();
         }
 
-        bool count(TIME t, HASH h) override {
-            DATA sign = h % 2 ? 1 : -1;
+        bool count(TIME t, HASH h, DATA c) override {
+            DATA sign = h % 2 ? c : -c;
             if(time.same_as_last(t)) {
                 value += sign;
                 return false;
             }
 
-            if(time.count(t, h)) [[unlikely]] {
+            if(time.count(t, h, c)) [[unlikely]] {
                 flush();
                 return true;
             }

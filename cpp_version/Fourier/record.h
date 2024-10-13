@@ -15,6 +15,13 @@ namespace Fourier {
             return data;
         }
 
+        size_t serialize() const {
+            size_t result = 0;
+            result += sizeof(pos);
+            result += sizeof(data);
+            return result;
+        }
+
         friend constexpr partial_ordering operator<=>(const record& lhs, const record& rhs);
     };
 

@@ -12,11 +12,13 @@ public:
     // reset all related data structures; act as an empty table afterward
     virtual void reset() = 0;
     // return true if inserted successfully
-    virtual bool count(const five_tuple& f, TIME t) = 0;
+    virtual bool count(const five_tuple& f, TIME t, DATA c) = 0;
     // finish recording and deal with remaining buffered data
     virtual void flush() = 0;
     // rebuild counters of five-tuple f in all possible time-window
     virtual STREAM_QUEUE rebuild(const five_tuple& f, TIME start, TIME last) const = 0;
+    // serialize all the non-empty counters in table
+    virtual size_t serialize() const = 0;
 };
 
 template<DerivedCounter C = abstract_counter, int W = FULL_WIDTH, int H = FULL_HEIGHT>
@@ -40,7 +42,7 @@ protected:
         return upper_bound(qc.begin(), qc.end(), start,
                              [](const TIME t, const C& c) { return c.start() + MAX_LENGTH > t; });
     }
-    virtual DATA select_median(vector<DATA>& vals) const {
+    virtual DATA select_median(array<DATA, HEIGHT>& vals) const {
         int size = vals.size();
         sort(vals.begin(), vals.end());
         DATA median = 0;
@@ -54,7 +56,7 @@ protected:
 
         return median;
     }
-    virtual DATA select_min(const vector<DATA>& vals) const {
+    virtual DATA select_min(array<DATA, HEIGHT>& vals) const {
         DATA min = *min_element(vals.begin(), vals.end());
         assert(min >= 0);
         if(min < 0)
@@ -62,7 +64,8 @@ protected:
 
         return min;
     }
-    virtual DATA select_val(vector<DATA>& vals) const {
+
+    virtual DATA select_val(array<DATA, HEIGHT>& vals) const {
         return select_min(vals);
     }
 public:
@@ -77,15 +80,15 @@ public:
                 c.clear();
     }
     // return true if inserted successfully
-    virtual bool count(const five_tuple& f, TIME t) override {
+    virtual bool count(const five_tuple& f, TIME t, DATA c) override {
         for(int row = 0; row < HEIGHT; row++) {
             HASH h = f.hash(seeds[row]);
             HASH rem = h % WIDTH;
             HASH quo = h / WIDTH;
-            bool result = counters[row][rem].count(t, quo);
+            bool result = counters[row][rem].count(t, quo, c);
             if(result) {
                 save_counter(row, rem);
-                counters[row][rem].count(t, quo);
+                counters[row][rem].count(t, quo, c);
             }
         }
         return true;
@@ -103,7 +106,11 @@ public:
     }
     // rebuild counters of five-tuple f in [start, last], inclusive
     virtual STREAM_QUEUE rebuild(const five_tuple& f, TIME start, TIME last) const override {
-        map<TIME, vector<DATA>> merger;
+        vector<array<DATA, HEIGHT>> merger(last - start + 1);
+        for(auto& a : merger)
+            a.fill(0);
+        STREAM_QUEUE result(last - start + 1);
+
         for(int row = 0; row < HEIGHT; row++) {
             HASH h = f.hash(seeds[row]);
             HASH rem = h % WIDTH;
@@ -114,14 +121,29 @@ public:
                 if(c->start() > last)
                     break;
                 for(auto& p : c->rebuild(quo))
-                    merger[p.first].emplace_back(p.second);
+                    if(p.first >= start && p.first <= last) [[likely]] {
+                        merger[p.first - start][row] = p.second;
+                    }
             }
         }
 
-        STREAM_QUEUE result;
-        for(auto& p : merger)
-            result.emplace_back(p.first, select_val(p.second));
+        for(int pos = 0; pos <= last - start; pos++) {
+            result[pos].first = pos + start;
+            result[pos].second = select_val(merger[pos]);
+        }
 
+        return result;
+    }
+    // serialize all the historic counters
+    virtual size_t serialize() const override {
+        size_t result = 0;
+        for(int row = 0; row < HEIGHT; row++)
+            for(int col = 0; col < WIDTH; col++) {
+                // history queue separator
+                result += sizeof(history[row][col].size());
+                for(auto& c : history[row][col])
+                    result += c.serialize();
+            }
         return result;
     }
 };

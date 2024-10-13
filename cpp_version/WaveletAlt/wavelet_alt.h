@@ -18,9 +18,9 @@ public:
         low.reset();
     }
 
-    void count(const five_tuple& f, const TIME t) override {
-        top.count(f, t);
-        low.count(f, t);
+    void count(const five_tuple& f, const TIME t, const DATA c) override {
+        top.count(f, t, c);
+        low.count(f, t, c);
     }
 
     void flush() override {
@@ -33,7 +33,9 @@ public:
         for(auto& p : dict) {
             auto& f = p.first;
             auto& q = p.second;
-            heavy_dict[f] = top.rebuild(f, q.front().first, q.back().first);
+            auto temp = top.rebuild(f, q.front().first, q.back().first);
+            if(!temp.empty())
+                heavy_dict[f] = move(temp);
         }
         low.subtract(heavy_dict);
 
@@ -48,6 +50,13 @@ public:
                       [](const pair<TIME, DATA>& l, const pair<TIME, DATA>& r) { return l.first < r.first; });
         }
 
+        return result;
+    }
+
+    size_t serialize() const override {
+        size_t result = 0;
+        result += top.serialize();
+        result += low.serialize();
         return result;
     }
 };

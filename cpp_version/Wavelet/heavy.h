@@ -8,8 +8,8 @@ using namespace std;
 
 namespace Wavelet {
 
-    template<unsigned QUEUE_N = 1>
-    class heavy : public basic_table<counter<QUEUE_N>, HALF_WIDTH, LESS_DEPTH> {
+    template<bool BY_THRESHOLD = false>
+    class heavy : public basic_table<counter<BY_THRESHOLD>, HALF_WIDTH, PAIR_HEIGHT> {
     protected:
         constexpr static const HASH seed = heavy::seeds[heavy::HEIGHT];
         static_assert(sizeof(heavy::seeds) / sizeof(HASH) >= heavy::HEIGHT + 1);
@@ -44,7 +44,7 @@ namespace Wavelet {
                 c.reset();
         }
     public:
-        bool count(const five_tuple& f, TIME t) override {
+        bool count(const five_tuple& f, TIME t, DATA c) override {
             HASH h = f.hash(seed);
             HASH rem = h % heavy::WIDTH;
             HASH quo = h / heavy::WIDTH;
@@ -72,18 +72,17 @@ namespace Wavelet {
             } else {
                 // insertion successful
                 frequency[row][rem] += HIT_RATIO;
-                auto& c = heavy::counters[row][rem];
-                bool result = c.count(t, quo);
+                bool result = heavy::counters[row][rem].count(t, quo, c);
                 if(result) {
                     save_counter(row, rem);
-                    c.count(t, quo);
+                    heavy::counters[row][rem].count(t, quo, c);
                 }
                 return true;
             }
         }
 
         STREAM_QUEUE rebuild(const five_tuple& f, TIME, TIME) const override {
-            map<TIME, vector<DATA>> merger;
+            map<TIME, DATA> merger;
             // search f in existing labels
             HASH col = f.hash(seed) % heavy::WIDTH;
             HASH row;
@@ -94,14 +93,14 @@ namespace Wavelet {
                         auto& hc = heavy::history[row][col];
                         auto c = hc.begin() + (l - hl.begin());
                         for(auto& p : c->rebuild(row))
-                            merger[p.first].emplace_back(p.second);
+                            merger[p.first] = p.second;
                     }
                 }
             }
 
             STREAM_QUEUE result;
             for(auto& p : merger)
-                result.emplace_back(p.first, heavy::select_min(p.second));
+                result.emplace_back(p.first, p.second);
 
             return result;
         }
@@ -112,6 +111,14 @@ namespace Wavelet {
                 for(auto& c : row)
                     result.insert(c);
             return result;
+        }
+
+        void list_min(vector<record>& result) const {
+            for(int row = 0; row < heavy::HEIGHT; row++)
+                for(int col = 0; col < heavy::WIDTH; col++)
+                    for(auto& c : heavy::history[row][col])
+                        if(c.heap_full())
+                            result.push_back(c.list_min());
         }
     };
 

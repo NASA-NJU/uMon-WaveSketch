@@ -11,5 +11,5 @@ add_executable(
         main.cpp
 )
 
-file(GLOB DATA "../data/*")
+file(GLOB DATA "data_source/*")
 file(COPY ${DATA} DESTINATION data_source)

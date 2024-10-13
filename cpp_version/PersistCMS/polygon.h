@@ -7,8 +7,30 @@ using namespace std;
 
 namespace PersistCMS {
 
-    typedef pair<double, double> node;
-    typedef pair<TIME, node> line;
+    class node : public pair<double, double> {
+    public:
+        using Base = pair<double, double>;
+        using Base::Base;
+
+        size_t serialize() const {
+            size_t result = 0;
+            result += sizeof(this->first);
+            result += sizeof(this->second);
+            return result;
+        }
+    };
+    class line : public pair<TIME, node> {
+    public:
+        using Base = pair<TIME, node>;
+        using Base::Base;
+
+        size_t serialize() const {
+            size_t result = 0;
+            result += sizeof(this->first);
+            result += this->second.serialize();
+            return result;
+        }
+    };
 
     // polygon represents (m, b) pair of all lines u = mt + b fitting data ranges (t_k, [alpha_k, omega_k]).
     // in other words, all (m, b) pair subject to

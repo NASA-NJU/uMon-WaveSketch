@@ -9,11 +9,14 @@
 // #define SELECT_IN
 // #define SELECT_OUT
 // #define FILTER_LOW 20u
-#define FILE_IN ("data_source/hadoop15.csv")
+#define FILE_IN ("/home/xyhan/forge/niffler/data_source/single.csv")
 #define FILE_OUT ("report.csv")
-// #define FILTER_TIME (65536u * TIMESCALE)
+#define FLOW_OUT ("sample.csv")
+//#define META_OUT ("meta_report.csv")
+//#define FILTER_TIME (25308u * TIMESCALE)
+//#define BY_BYTES 1
 
-static five_tuple breakpoint(63669);
+static five_tuple breakpoint(2882);
 
 /* execution */
 #define USE_WAVE_IDEAL methods::WAVE_IDEAL
@@ -23,7 +26,7 @@ static five_tuple breakpoint(63669);
 #define USE_FOURIER methods::FOURIER
 #define USE_PERSIST_CMS methods::PERSIST_CMS
 #define USE_PERSIST_AMS methods::PERSIST_AMS
-// #define USE_WAVE_ALT_I methods::WAVE_ALT_I
-// #define USE_WAVE_ALT_P methods::WAVE_ALT_P
+//#define USE_WAVE_ALT_I methods::WAVE_ALT_I
+//#define USE_WAVE_ALT_P methods::WAVE_ALT_P
 
 #endif //DEBUG_H

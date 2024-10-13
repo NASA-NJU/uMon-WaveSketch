@@ -7,12 +7,23 @@ using namespace std;
 
 namespace PersistAMS {
 
-    typedef STREAM_QUEUE::value_type record;
+    class record : public STREAM_QUEUE::value_type {
+    public:
+        using Base = STREAM_QUEUE::value_type;
+        using Base::Base;
+
+        size_t serialize() const {
+            size_t result = 0;
+            result += sizeof(Base::first_type);
+            result += sizeof(Base::second_type);
+            return result;
+        }
+    };
 
     class counter : public abstract_counter {
     protected:
         // random generator
-        constexpr static const int DELTA = SAMPLE_RATE * 3;
+        constexpr static const int DELTA = MAX_LENGTH / ROUND(FULL_DEPTH * 4 + 4 - 24, 10);
         static mt19937 gen;
         static uniform_int_distribution<> dis;
         static bool test() {
@@ -37,7 +48,7 @@ namespace PersistAMS {
             cache.clear();
         }
 
-        bool count(TIME t, HASH h) override {
+        bool count(TIME t, HASH h, DATA c) override {
             HASH sign = h % 2;
             assert(t >= last_time[sign]);
             if(start_time == 0) [[unlikely]] {
@@ -52,7 +63,7 @@ namespace PersistAMS {
                     history[sign].emplace_back(last_time[sign], value[sign]);
 
             last_time[sign] = t;
-            value[sign]++;
+            value[sign] += c;
             return false;
         }
 
@@ -103,6 +114,18 @@ namespace PersistAMS {
             STREAM_QUEUE result = cache;
             for(auto& p : result)
                 p.second = sign * p.second >= 0 ? sign * p.second : 0;
+            return result;
+        }
+
+        size_t serialize() const override {
+            size_t result = 0;
+            result += sizeof(start_time);
+            // counter for histories
+            result += sizeof(uint16_t) * 2;
+            for(auto& r : history[0])
+                result += r.serialize();
+            for(auto& r : history[1])
+                result += r.serialize();
             return result;
         }
     };

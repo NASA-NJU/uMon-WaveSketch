@@ -21,11 +21,13 @@ public:
     // reset all related data structures
     virtual void reset() = 0;
     // count individual packet arriving at time t
-    virtual void count(const five_tuple& f, const TIME t) = 0;
+    virtual void count(const five_tuple& f, const TIME t, const DATA c) = 0;
     // finish recording and deal with remaining buffered data
     virtual void flush() = 0;
     // rebuild counters for a label-set in all available timestamps
     virtual STREAM rebuild(const STREAM& dict) const = 0;
+    // serialize related data structures
+    virtual size_t serialize() const = 0;
 };
 
 template<DerivedTable T>
@@ -37,8 +39,8 @@ public:
         sketch.reset();
     }
 
-    void count(const five_tuple& f, const TIME t) override {
-        sketch.count(f, t);
+    void count(const five_tuple& f, const TIME t, const DATA c) override {
+        sketch.count(f, t, c);
     }
 
     void flush() override {
@@ -51,6 +53,10 @@ public:
             result[p.first] = sketch.rebuild(p.first, p.second.front().first, p.second.back().first);
 
         return result;
+    }
+
+    virtual size_t serialize() const override {
+        return sketch.serialize();
     }
 };
 

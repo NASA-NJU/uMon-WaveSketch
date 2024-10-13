@@ -56,7 +56,7 @@ namespace Wavelet {
             return t == last_time;
         }
 
-        bool count(TIME t, HASH) override {
+        bool count(TIME t, HASH, DATA) override {
             assert(t > last_time);
             if(start_time == 0) [[unlikely]] {
                 start_time = t;
@@ -104,6 +104,20 @@ namespace Wavelet {
 
         TIME start() const override {
             return start_time;
+        }
+
+        size_t serialize() const override {
+            size_t result = 0;
+            // test if start_time == 0
+            result += sizeof(bool);
+            result += sizeof(last_time);
+            result += sizeof(period);
+            result += sizeof(pointer);
+            for(int i = 0; i < pointer; i++) {
+                result += sizeof(history[i].first);
+                result += sizeof(history[i].second);
+            }
+            return result;
         }
     };
 

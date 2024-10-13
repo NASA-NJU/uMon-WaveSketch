@@ -19,6 +19,6 @@ typedef uint8_t BYTE;
 typedef unordered_set<five_tuple> LABELS;
 typedef deque<pair<TIME, DATA>> STREAM_QUEUE;
 typedef unordered_map<five_tuple, STREAM_QUEUE> STREAM;
-typedef deque<pair<five_tuple, TIME>> SORTED;
+typedef deque<tuple<five_tuple, TIME, DATA>> SORTED;
 
 #endif //TYPES_H

@@ -71,7 +71,13 @@ inline double Energy(const C& lhs, const C& rhs) {
         norm2 += rhs[i] * rhs[i];
     }
 
+    if(norm1 == 0) {
+        norm1 += 1;
+        norm2 += 1;
+    }
     double result = norm2 / norm1;
+    if(result > 1)
+        result = 1 / result;
     return result;
 }
 
@@ -117,6 +123,8 @@ ostream& operator<<(ostream& os, const methods& t) {
             os << "Wavelet-Alt-Ideal"; break;
         case methods::WAVE_ALT_P:
             os << "Wavelet-Alt-Practical"; break;
+        case methods::REFERENCE:
+            os << "dst" << breakpoint.dst_ip; break;
     }
     return os;
 }
@@ -149,7 +157,7 @@ benchmark::benchmark(const methods t, const five_tuple &f, const STREAM_QUEUE &l
 }
 
 ostream &operator<<(ostream &os, const benchmark &t) {
-    os << t.type << "," << benchmark::sketch_size << "," << t.original
+    os << t.type << "," << benchmark::sketch_size << "," << t.key.dst_ip << "," << t.original
        << "," << t.l1_norm
        << "," << t.l2_norm
        << "," << t.avg_err
